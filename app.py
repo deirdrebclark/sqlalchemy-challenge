@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
-from flask import request
 
 import datetime as dt
 from datetime import timedelta, date
@@ -113,54 +112,49 @@ def tobs():
 
 
 @app.route("/api/v1.0/<start>")
-def tobs_by_start_date(start):
+def tobs_by_start_date(start=None):
     # Create session from Python to the DB
     session = Session(engine)
 
     """Return a list of temperatures greater than the start date"""
-    # Pull in requested start date
-    starting_date = request.args.get("start")
 
     # Query
-    results = session.query(Measurement.date, func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) == starting_date).all()
+    results = session.query(Measurement.date, func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) >= start).all()
     
     # Create a dictionary and return TMIN, TAVG, and TMAX from the start date
-    all_tobs = []
+    all_start_tobs = []
     for date, TMIN, TAVG, TMAX in results:
         tobs_dict = {}
         tobs_dict["date"] = date
         tobs_dict["TMIN"] = TMIN
         tobs_dict["TAVG"] = TAVG
         tobs_dict["TMAX"] = TMAX
-        all_tobs.append(tobs_dict)
+        all_start_tobs.append(tobs_dict)
 
-    return jsonify(all_tobs)
+    return jsonify(all_start_tobs)
 
 
 @app.route("/api/v1.0/<start>/<end>")
-def tobs_by_start_end_date():
+def tobs_by_start_end_date(start = None, end = None):
     # Create session from Python to the DB
     session = Session(engine)
 
     """Return a list of temperatures greater than the start date"""
-    # Pull in requested start date
-    start_date = request.args.get("start")
-    end_date = request.args.get("end")
 
     # Query
-    results = session.query(Measurement.date,func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) >= start_date).filter(Measurement.date <= end_date).all()
+    results = session.query(Measurement.date,func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) >= start).filter(Measurement.date <= end).all()
     
     # Create a dictionary and return TMIN, TAVG, and TMAX from the start date
-    all_tobs = []
+    all_startend_tobs = []
     for date, TMIN, TAVG, TMAX in results:
         tobs_dict = {}
         tobs_dict["date"] = date
         tobs_dict["TMIN"] = TMIN
         tobs_dict["TAVG"] = TAVG
         tobs_dict["TMAX"] = TMAX
-        all_tobs.append(tobs_dict)
+        all_startend_tobs.append(tobs_dict)
 
-    return jsonify(all_tobs)
+    return jsonify(all_startend_tobs)
 
 
 if __name__ == '__main__':
