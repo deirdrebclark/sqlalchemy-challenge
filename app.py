@@ -5,7 +5,11 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
+from flask import request
+
+import datetime as dt
+from datetime import timedelta, date
 
 #################################################
 # Database Setup
@@ -39,8 +43,8 @@ def home():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end>"
+        f"/api/v1.0/start_date<br/>"
+        f"/api/v1.0/start_date/end_date"
     )
 @app.route("/api/v1.0/precipitation")
 def names():
@@ -78,7 +82,7 @@ def stations():
     all_stations = []
     for station in results:
         station_dict = {}
-        station_dict[station] = station
+        station_dict['station'] = station
         all_stations.append(station_dict)
     
     return jsonify(all_stations)
@@ -92,10 +96,9 @@ def tobs():
     """Return a list of temperature observations """
     # Queries
     end_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
-    start_date = dt.date(end_date) - dt.timedelta(days = 365)
+    start_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365)
 
-    results = session.query(Measurement.date, Measurement.tobs).\
-        filter(func.strftime(Measurement.date) >= start_date).all()
+    results = session.query(Measurement.date, Measurement.tobs).filter(func.strftime(Measurement.date) >= start_date).all()
 
     session.close()
 
@@ -110,20 +113,16 @@ def tobs():
 
 
 @app.route("/api/v1.0/<start>")
-def tobs_by_start_date():
+def tobs_by_start_date(start):
     # Create session from Python to the DB
     session = Session(engine)
 
     """Return a list of temperatures greater than the start date"""
     # Pull in requested start date
-    start_date = request.args.get('start')
+    starting_date = request.args.get("start")
 
     # Query
-    results = session.query(Measuerement.date,\
-        func.min(Measurement.tobs.label("TMIN")),\
-            func.avg(Measurement.tobs.label("TAVG")),\
-                func.max(Measurement.tobs.label("TMAX"))).\
-                    filter(func.strftime(Measurement.date) >= start_date).all()
+    results = session.query(Measurement.date, func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) == starting_date).all()
     
     # Create a dictionary and return TMIN, TAVG, and TMAX from the start date
     all_tobs = []
@@ -132,14 +131,14 @@ def tobs_by_start_date():
         tobs_dict["date"] = date
         tobs_dict["TMIN"] = TMIN
         tobs_dict["TAVG"] = TAVG
-        tbox_dict["TMAX"] = TMAX
+        tobs_dict["TMAX"] = TMAX
         all_tobs.append(tobs_dict)
 
     return jsonify(all_tobs)
 
 
 @app.route("/api/v1.0/<start>/<end>")
-def tobs_by_start_date():
+def tobs_by_start_end_date():
     # Create session from Python to the DB
     session = Session(engine)
 
@@ -149,12 +148,7 @@ def tobs_by_start_date():
     end_date = request.args.get("end")
 
     # Query
-    results = session.query(Measuerement.date,\
-        func.min(Measurement.tobs.label("TMIN")),\
-            func.avg(Measurement.tobs.label("TAVG")),\
-                func.max(Measurement.tobs.label("TMAX"))).\
-                    filter(func.strftime(Measurement.date) >= start_date).\
-                        filter(Measurement.date <= end_date).all()
+    results = session.query(Measurement.date,func.min(Measurement.tobs.label("TMIN")), func.avg(Measurement.tobs.label("TAVG")), func.max(Measurement.tobs.label("TMAX"))).filter(func.strftime(Measurement.date) >= start_date).filter(Measurement.date <= end_date).all()
     
     # Create a dictionary and return TMIN, TAVG, and TMAX from the start date
     all_tobs = []
@@ -163,7 +157,7 @@ def tobs_by_start_date():
         tobs_dict["date"] = date
         tobs_dict["TMIN"] = TMIN
         tobs_dict["TAVG"] = TAVG
-        tbox_dict["TMAX"] = TMAX
+        tobs_dict["TMAX"] = TMAX
         all_tobs.append(tobs_dict)
 
     return jsonify(all_tobs)
